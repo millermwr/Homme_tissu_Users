@@ -14,7 +14,8 @@ export function withAuthHeaders(token: string) {
   };
 }
 
-export function mediaSrc(mediaUrl: string) {
+export function mediaSrc(mediaUrl?: string | null) {
+  if (!mediaUrl) return '';
   if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
     return mediaUrl;
   }
