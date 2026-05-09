@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
-import { api, isImageMedia, mediaSrc } from '../api';
+import { api, isImageMedia, mediaSrc, backendWaking } from '../api';
 
 interface VesteImage {
   id: number;
@@ -185,6 +185,14 @@ watch(items, async () => {
     </div>
   </section>
 
+  <!-- Backend waking banner -->
+  <div v-if="backendWaking" style="background:#fff7ed; border-left:4px solid #f97316; padding:0.75rem; margin:0.75rem 0; border-radius:4px; color:#9a3412; display:flex; align-items:center; gap:0.75rem">
+    <div style="width:18px; height:18px; border-radius:50%; border:3px solid rgba(0,0,0,0.12); border-top-color:#f97316; animation:spin 1s linear infinite"></div>
+    <div>
+      Le serveur démarre (démarrage à froid). Patientez quelques instants — la page se rafraîchira automatiquement.
+    </div>
+  </div>
+
   <section class="catalog">
     <div v-if="loading" style="text-align: center; padding: 2rem">
       <p style="font-size: 1.1rem">⏳ Chargement du catalogue...</p>
@@ -315,4 +323,6 @@ watch(items, async () => {
 .card-image-container {
   position: relative;
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
