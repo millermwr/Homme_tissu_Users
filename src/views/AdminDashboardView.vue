@@ -1013,6 +1013,7 @@ onUnmounted(() => {
 
             <button
               class="btn"
+              type="button"
               @click="addImageToItem(item.id)"
               :disabled="(selectedFilesPerItem[item.id] || []).length === 0 || uploadingPerItem[item.id]"
               style="width: 100%; font-size: 0.9rem"
@@ -1023,18 +1024,20 @@ onUnmounted(() => {
 
           <!-- Actions -->
           <div class="item-actions" style="margin-top: 0.5rem">
-                <button
-                  class="btn"
-                  @click="publishItem(item.id, !item.isPublished)"
-                  :disabled="itemActionSaving[item.id]"
-                  style="flex: 1; font-size: 0.9rem"
-                >
-                  {{ itemActionSaving[item.id] ? '⏳ Traitement...' : item.isPublished ? '🔒 Dépublier' : '🌐 Publier' }}
+            <button
+              class="btn"
+              type="button"
+              @click="publishItem(item.id, !item.isPublished)"
+              :disabled="itemActionSaving[item.id]"
+              style="flex: 1; font-size: 0.9rem"
+            >
+              {{ itemActionSaving[item.id] ? '⏳ Traitement...' : item.isPublished ? '🔒 Dépublier' : '🌐 Publier' }}
             </button>
             <button
               class="danger"
+              type="button"
               @click="deleteItem(item.id)"
-                  :disabled="itemActionSaving[item.id]"
+              :disabled="itemActionSaving[item.id]"
               style="flex: 1; font-size: 0.9rem"
             >
               {{ itemActionSaving[item.id] ? '⏳ Suppression...' : '🗑️ Supprimer' }}
