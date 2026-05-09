@@ -148,6 +148,10 @@ onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
 });
 
+watch(backendWaking, (isWaking) => {
+  document.body.style.overflow = isWaking ? 'hidden' : 'auto';
+});
+
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
   document.body.style.overflow = 'auto';
@@ -193,11 +197,33 @@ watch(items, async () => {
     </div>
   </section>
 
-  <!-- Backend waking banner -->
-  <div v-if="backendWaking" style="background:#fff7ed; border-left:4px solid #f97316; padding:0.75rem; margin:0.75rem 0; border-radius:4px; color:#9a3412; display:flex; align-items:center; gap:0.75rem">
-    <div style="width:18px; height:18px; border-radius:50%; border:3px solid rgba(0,0,0,0.12); border-top-color:#f97316; animation:spin 1s linear infinite"></div>
-    <div>
-      Le serveur démarre (démarrage à froid). Patientez quelques instants — la page se rafraîchira automatiquement.
+  <div v-if="backendWaking" class="wake-screen" role="status" aria-live="polite" aria-label="Le serveur démarre">
+    <div class="wake-card">
+      <div class="wake-brand">
+        <div class="wake-brand-mark">HT</div>
+        <div>
+          <p class="wake-kicker">Atelier Couture</p>
+          <h2>Le serveur se réveille</h2>
+        </div>
+      </div>
+
+      <p class="wake-copy">
+        Le catalogue revient dans quelques instants. Nous préparons vos modèles et vos images.
+      </p>
+
+      <div class="wake-points">
+        <span>Catalogue</span>
+        <span>Images</span>
+        <span>Publication</span>
+      </div>
+
+      <div class="wake-progress" aria-hidden="true">
+        <span />
+      </div>
+
+      <small>
+        Patientez quelques secondes, la page se rafraîchira automatiquement dès que le backend sera prêt.
+      </small>
     </div>
   </div>
 
@@ -317,6 +343,122 @@ watch(items, async () => {
 </template>
 
 <style scoped>
+.wake-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at top, rgba(155, 118, 83, 0.24) 0%, transparent 45%),
+    linear-gradient(135deg, rgba(34, 27, 23, 0.96) 0%, rgba(70, 46, 31, 0.96) 45%, rgba(111, 78, 55, 0.94) 100%);
+  backdrop-filter: blur(10px);
+}
+
+.wake-card {
+  width: min(680px, 100%);
+  padding: 2rem;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 251, 247, 0.98) 0%, rgba(255, 246, 239, 0.94) 100%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.32);
+  color: #3d2a1f;
+  text-align: left;
+}
+
+.wake-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.wake-brand-mark {
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: white;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary-light));
+  box-shadow: 0 16px 30px rgba(111, 78, 55, 0.35);
+}
+
+.wake-kicker {
+  margin: 0 0 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.72rem;
+  color: #8a6a53;
+}
+
+.wake-card h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1.05;
+  color: #2d1e16;
+}
+
+.wake-copy {
+  margin: 0 0 1.25rem;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #5a4639;
+}
+
+.wake-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.wake-points span {
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(111, 78, 55, 0.1);
+  border: 1px solid rgba(111, 78, 55, 0.16);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.wake-progress {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(111, 78, 55, 0.12);
+  overflow: hidden;
+  margin-bottom: 0.9rem;
+}
+
+.wake-progress span {
+  display: block;
+  width: 40%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--primary-dark), var(--primary-light), #c79d7e);
+  animation: wakeSlide 1.5s ease-in-out infinite;
+}
+
+.wake-card small {
+  display: block;
+  color: #7a6558;
+  line-height: 1.6;
+}
+
+@keyframes wakeSlide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(280%);
+  }
+}
+
 .image-count {
   position: absolute;
   bottom: 0;
@@ -334,4 +476,20 @@ watch(items, async () => {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 720px) {
+  .wake-card {
+    padding: 1.5rem;
+  }
+
+  .wake-brand {
+    align-items: flex-start;
+  }
+
+  .wake-brand-mark {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 14px;
+  }
+}
 </style>
