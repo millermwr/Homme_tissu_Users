@@ -135,6 +135,14 @@ function handleKeydown(e: KeyboardEvent) {
   if (e.key === 'ArrowLeft') previousImage();
 }
 
+function onImgError(e: Event) {
+  const target = e.target as HTMLImageElement;
+  if (!target) return;
+  // simple inline SVG placeholder
+  const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'><rect width='100%' height='100%' fill='%23eee'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' fill='%23999' font-size='24'>Image indisponible</text></svg>`);
+  target.src = `data:image/svg+xml;utf8,${svg}`;
+}
+
 onMounted(() => {
   loadCatalog();
   window.addEventListener('keydown', handleKeydown);
@@ -222,6 +230,7 @@ watch(items, async () => {
               v-if="isImageMedia(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaType, item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
               :src="mediaSrc(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
               :alt="item.titre"
+              @error="onImgError"
               style="width: 100%; height: 260px; object-fit: cover; display: block"
             />
             <video
