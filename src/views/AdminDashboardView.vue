@@ -80,6 +80,9 @@ const selectedFilesPerItem = ref<Record<number, File[]>>({});
 const uploadingPerItem = ref<Record<number, boolean>>({});
 const uploadPercentPerItem = ref<Record<number, number>>({});
 
+// track whether we've shown a waking overlay so we can refresh data when server wakes
+const hadWakingShown = ref(false);
+
 // Carousel state per item (for admin thumbnails)
 const carouselIndexPerItem = ref<Record<number, number>>({});
 const carouselIntervalPerItem = ref<Record<number, number | null>>({});
@@ -598,8 +601,25 @@ function logout() {
 }
 
 onMounted(loadData);
+onMounted(() => {
+  loadData();
+  // ensure we also reload when the server-woke event occurs
+  window.addEventListener('server-woke', () => {
+    // defer a bit so server is fully ready
+    setTimeout(() => loadData(), 250);
+  });
+});
+
 watch(backendWaking, (isWaking) => {
   document.body.style.overflow = isWaking ? 'hidden' : 'auto';
+  if (isWaking) {
+    hadWakingShown.value = true;
+  } else if (!isWaking && hadWakingShown.value) {
+    setTimeout(() => {
+      loadData();
+      hadWakingShown.value = false;
+    }, 350);
+  }
 });
 onUnmounted(() => {
   document.body.style.overflow = 'auto';
@@ -625,18 +645,18 @@ onUnmounted(() => {
     ✗ {{ pageError }}
   </div>
 
-  <div v-if="backendWaking" class="wake-screen" role="status" aria-live="polite" aria-label="Le serveur démarre">
+  <div v-if="backendWaking" class="wake-screen" role="status" aria-live="polite" aria-label="Démarrage du serveur">
     <div class="wake-card">
       <div class="wake-brand">
         <div class="wake-brand-mark">HT</div>
         <div>
           <p class="wake-kicker">Espace Administration</p>
-          <h2>Le serveur se réveille</h2>
+          <h2>Démarrage du serveur</h2>
         </div>
       </div>
 
       <p class="wake-copy">
-        Nous reconnectons le dashboard admin. Les données de modèles et les uploads reviennent dans quelques instants.
+        Le serveur redémarre. La connexion au tableau de bord sera rétablie sous peu.
       </p>
 
       <div class="wake-points">
@@ -650,7 +670,7 @@ onUnmounted(() => {
       </div>
 
       <small>
-        Patientez quelques secondes, l'interface se remettra à jour automatiquement quand le backend sera prêt.
+        Patientez quelques instants ; l'interface se remettra à jour automatiquement dès que le serveur sera prêt.
       </small>
     </div>
   </div>
@@ -1169,7 +1189,7 @@ onUnmounted(() => {
 
 .wake-progress {
   width: 100%;
-  height: 10px;
+  height: 14px;
   border-radius: 999px;
   background: rgba(111, 78, 55, 0.12);
   overflow: hidden;
@@ -1178,11 +1198,11 @@ onUnmounted(() => {
 
 .wake-progress span {
   display: block;
-  width: 40%;
+  width: 36%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--primary-dark), var(--primary-light), #c79d7e);
-  animation: wakeSlide 1.5s ease-in-out infinite;
+  animation: wakeSlide 1.4s cubic-bezier(.2,.8,.2,1) infinite;
 }
 
 .wake-card small {

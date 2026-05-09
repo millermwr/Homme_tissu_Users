@@ -46,6 +46,9 @@ const lightboxIndex = ref(0);
 const lightboxImages = ref<VesteImage[]>([]);
 const lightboxVeste = ref<Veste | null>(null);
 
+// track whether we've shown a waking overlay so we can refresh after wake
+const hadWakingShown = ref(false);
+
 // Carousel state per item (index + interval id)
 const carouselIndexPerItem = ref<Record<number, number>>({});
 const carouselIntervalPerItem = ref<Record<number, number | null>>({});
@@ -146,15 +149,25 @@ function onImgError(e: Event) {
 onMounted(() => {
   loadCatalog();
   window.addEventListener('keydown', handleKeydown);
+  // Listen for server wake events to refresh catalog without full reload
+  window.addEventListener('server-woke', loadCatalog as EventListener);
 });
 
 watch(backendWaking, (isWaking) => {
   document.body.style.overflow = isWaking ? 'hidden' : 'auto';
+  if (isWaking) {
+    hadWakingShown.value = true;
+  } else if (!isWaking && hadWakingShown.value) {
+    // server became available — refresh the page so data & UI update
+    setTimeout(() => window.location.reload(), 350);
+    hadWakingShown.value = false;
+  }
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
   document.body.style.overflow = 'auto';
+  window.removeEventListener('server-woke', loadCatalog as EventListener);
   // clear carousels
   for (const k in carouselIntervalPerItem.value) {
     const id = Number(k);
@@ -197,18 +210,18 @@ watch(items, async () => {
     </div>
   </section>
 
-  <div v-if="backendWaking" class="wake-screen" role="status" aria-live="polite" aria-label="Le serveur démarre">
+  <div v-if="backendWaking" class="wake-screen" role="status" aria-live="polite" aria-label="Démarrage du serveur">
     <div class="wake-card">
       <div class="wake-brand">
         <div class="wake-brand-mark">HT</div>
         <div>
           <p class="wake-kicker">Atelier Couture</p>
-          <h2>Le serveur se réveille</h2>
+          <h2>Démarrage du serveur</h2>
         </div>
       </div>
 
       <p class="wake-copy">
-        Le catalogue revient dans quelques instants. Nous préparons vos modèles et vos images.
+        Le serveur démarre. Le catalogue et les images seront bientôt disponibles.
       </p>
 
       <div class="wake-points">
@@ -222,7 +235,7 @@ watch(items, async () => {
       </div>
 
       <small>
-        Patientez quelques secondes, la page se rafraîchira automatiquement dès que le backend sera prêt.
+        Patientez quelques instants ; la page se rafraîchira automatiquement dès que le serveur sera prêt.
       </small>
     </div>
   </div>
@@ -428,7 +441,7 @@ watch(items, async () => {
 
 .wake-progress {
   width: 100%;
-  height: 10px;
+  height: 14px;
   border-radius: 999px;
   background: rgba(111, 78, 55, 0.12);
   overflow: hidden;
@@ -437,11 +450,11 @@ watch(items, async () => {
 
 .wake-progress span {
   display: block;
-  width: 40%;
+  width: 36%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--primary-dark), var(--primary-light), #c79d7e);
-  animation: wakeSlide 1.5s ease-in-out infinite;
+  animation: wakeSlide 1.4s cubic-bezier(.2,.8,.2,1) infinite;
 }
 
 .wake-card small {

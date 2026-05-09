@@ -22,16 +22,24 @@ function stopProbe() {
 function startProbe() {
   if (_probeTimer) return;
   // poll a lightweight endpoint periodically until success
-  _probeTimer = window.setInterval(async () => {
+  const runProbe = async () => {
     try {
-      // pick a safe, public endpoint that exists on the API
-      await api.get('/atelier/profile', { timeout: 8000 });
-      backendWaking.value = false;
-      stopProbe();
+        await api.get('/atelier/profile', { timeout: 5000 });
+        backendWaking.value = false;
+        stopProbe();
+        try {
+          window.dispatchEvent(new CustomEvent('server-woke'));
+        } catch (_) {
+          // ignore in non-browser environments
+        }
     } catch (e) {
-      // keep polling
+      // keep polling until it succeeds
     }
-  }, 3000);
+  };
+
+  // run one immediate probe then poll more frequently to detect wake fast
+  runProbe();
+  _probeTimer = window.setInterval(runProbe, 1500);
 }
 
 export function withAuthHeaders(token: string) {
