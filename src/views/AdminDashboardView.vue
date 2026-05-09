@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, nextTick, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api, isImageMedia, mediaSrc, withAuthHeaders } from '../api';
 interface VesteImage {
@@ -77,6 +77,40 @@ const editSaving = ref<Record<number, boolean>>({});
 const selectedFilesPerItem = ref<Record<number, File[]>>({});
 const uploadingPerItem = ref<Record<number, boolean>>({});
 const uploadPercentPerItem = ref<Record<number, number>>({});
+
+// Carousel state per item (for admin thumbnails)
+const carouselIndexPerItem = ref<Record<number, number>>({});
+const carouselIntervalPerItem = ref<Record<number, number | null>>({});
+
+function startCarouselForItem(id: number, length: number) {
+  if (!length || length <= 1) return;
+  carouselIndexPerItem.value[id] = carouselIndexPerItem.value[id] ?? 0;
+  // clear existing
+  stopCarouselForItem(id);
+  const iv = window.setInterval(() => {
+    const current = carouselIndexPerItem.value[id] ?? 0;
+    carouselIndexPerItem.value[id] = (current + 1) % length;
+  }, 3000);
+  carouselIntervalPerItem.value[id] = iv;
+}
+
+function stopCarouselForItem(id: number) {
+  const iv = carouselIntervalPerItem.value[id];
+  if (iv) {
+    clearInterval(iv as number);
+    carouselIntervalPerItem.value[id] = null;
+  }
+}
+
+function resetAllCarousels() {
+  for (const k in carouselIntervalPerItem.value) {
+    const id = Number(k);
+    stopCarouselForItem(id);
+  }
+  for (const item of items.value) {
+    startCarouselForItem(item.id, item.images?.length ?? 0);
+  }
+}
 
 const canSubmit = computed(
   () => !!titre.value && !!description.value && !uploading.value,
@@ -209,6 +243,9 @@ async function loadData() {
       editDescription.value = nextEditDescription;
       editSaving.value = nextEditSaving;
       hasSuccess = true;
+      // start carousels for admin thumbnails
+      await nextTick();
+      resetAllCarousels();
     } else {
       vestesLoadError.value = 'Impossible de charger la liste des modeles.';
       hasUnauthorized = hasUnauthorized || vestesRes.reason?.response?.status === 401;
@@ -489,6 +526,12 @@ function logout() {
 }
 
 onMounted(loadData);
+onUnmounted(() => {
+  for (const k in carouselIntervalPerItem.value) {
+    const id = Number(k);
+    stopCarouselForItem(id);
+  }
+});
 </script>
 
 <template>
@@ -806,19 +849,29 @@ onMounted(loadData);
         <div v-for="item in items" :key="item.id" class="item">
           <!-- Thumbnail + Info -->
           <div style="display: grid; grid-template-columns: 100px 1fr; gap: 1rem; align-items: start">
-            <div style="border-radius: 8px; overflow: hidden; background: var(--bg-tertiary); height: 100px">
-              <img
-                v-if="item.images && item.images.length > 0 && isImageMedia(item.images[0].mediaType, item.images[0].mediaUrl)"
-                :src="mediaSrc(item.images[0].mediaUrl)"
-                :alt="item.titre"
-                style="width: 100%; height: 100%; object-fit: cover"
-              />
-              <video
-                v-else-if="item.images && item.images.length > 0"
-                :src="mediaSrc(item.images[0].mediaUrl)"
-                preload="metadata"
-                style="width: 100%; height: 100%; object-fit: cover"
-              />
+            <div
+              style="border-radius: 8px; overflow: hidden; background: var(--bg-tertiary); height: 100px"
+              @mouseenter.prevent="stopCarouselForItem(item.id)"
+              @mouseleave.prevent="startCarouselForItem(item.id, item.images.length)"
+            >
+              <template v-if="item.images && item.images.length > 0">
+                <img
+                  v-if="isImageMedia(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaType, item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
+                  :src="mediaSrc(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
+                  :alt="item.titre"
+                  style="width: 100%; height: 100%; object-fit: cover"
+                />
+                <video
+                  v-else
+                  :src="mediaSrc(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
+                  preload="metadata"
+                  muted
+                  autoplay
+                  playsinline
+                  loop
+                  style="width: 100%; height: 100%; object-fit: cover"
+                />
+              </template>
               <div v-else style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: var(--text-secondary)">
                 Pas d'image
               </div>

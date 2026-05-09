@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch, nextTick } from 'vue';
 import { api, isImageMedia, mediaSrc } from '../api';
 
 interface VesteImage {
@@ -45,6 +45,42 @@ const showLightbox = ref(false);
 const lightboxIndex = ref(0);
 const lightboxImages = ref<VesteImage[]>([]);
 const lightboxVeste = ref<Veste | null>(null);
+
+// Carousel state per item (index + interval id)
+const carouselIndexPerItem = ref<Record<number, number>>({});
+const carouselIntervalPerItem = ref<Record<number, number | null>>({});
+
+function startCarouselForItem(id: number, length: number) {
+  if (!length || length <= 1) return;
+  // initialize index
+  carouselIndexPerItem.value[id] = carouselIndexPerItem.value[id] ?? 0;
+  // clear existing
+  stopCarouselForItem(id);
+  // advance every 3s
+  const iv = window.setInterval(() => {
+    const current = carouselIndexPerItem.value[id] ?? 0;
+    carouselIndexPerItem.value[id] = (current + 1) % length;
+  }, 3000);
+  carouselIntervalPerItem.value[id] = iv;
+}
+
+function stopCarouselForItem(id: number) {
+  const iv = carouselIntervalPerItem.value[id];
+  if (iv) {
+    clearInterval(iv as number);
+    carouselIntervalPerItem.value[id] = null;
+  }
+}
+
+function resetAllCarousels() {
+  for (const k in carouselIntervalPerItem.value) {
+    const id = Number(k);
+    stopCarouselForItem(id);
+  }
+  for (const item of items.value) {
+    startCarouselForItem(item.id, item.images?.length ?? 0);
+  }
+}
 
 async function loadCatalog() {
   loading.value = true;
@@ -107,6 +143,17 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown);
   document.body.style.overflow = 'auto';
+  // clear carousels
+  for (const k in carouselIntervalPerItem.value) {
+    const id = Number(k);
+    stopCarouselForItem(id);
+  }
+});
+
+// restart carousels when items change
+watch(items, async () => {
+  await nextTick();
+  resetAllCarousels();
 });
 </script>
 
@@ -158,20 +205,28 @@ onUnmounted(() => {
           v-if="item.images && item.images.length > 0"
           class="card-image-container" 
           @click="openLightbox(item)"
+          @mouseenter.prevent="stopCarouselForItem(item.id)"
+          @mouseleave.prevent="startCarouselForItem(item.id, item.images.length)"
           style="cursor: pointer"
         >
-          <img
-            v-if="isImageMedia(item.images[0].mediaType, item.images[0].mediaUrl)"
-            :src="mediaSrc(item.images[0].mediaUrl)"
-            :alt="item.titre"
-            style="width: 100%; height: 260px; object-fit: cover; display: block"
-          />
-          <video
-            v-else
-            :src="mediaSrc(item.images[0].mediaUrl)"
-            preload="metadata"
-            style="width: 100%; height: 260px; object-fit: cover; display: block"
-          />
+          <template v-if="item.images && item.images.length > 0">
+            <img
+              v-if="isImageMedia(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaType, item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
+              :src="mediaSrc(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
+              :alt="item.titre"
+              style="width: 100%; height: 260px; object-fit: cover; display: block"
+            />
+            <video
+              v-else
+              :src="mediaSrc(item.images[carouselIndexPerItem[item.id] ?? 0]?.mediaUrl)"
+              preload="metadata"
+              muted
+              autoplay
+              playsinline
+              loop
+              style="width: 100%; height: 260px; object-fit: cover; display: block"
+            />
+          </template>
           <div v-if="item.images.length > 1" class="image-count">
             +{{ item.images.length - 1 }} images
           </div>
