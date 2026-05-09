@@ -75,6 +75,7 @@ const atelierLoadError = ref('');
 const editTitre = ref<Record<number, string>>({});
 const editDescription = ref<Record<number, string>>({});
 const editSaving = ref<Record<number, boolean>>({});
+const itemActionSaving = ref<Record<number, boolean>>({});
 const selectedFilesPerItem = ref<Record<number, File[]>>({});
 const uploadingPerItem = ref<Record<number, boolean>>({});
 const uploadPercentPerItem = ref<Record<number, number>>({});
@@ -111,6 +112,24 @@ function resetAllCarousels() {
   for (const item of items.value) {
     startCarouselForItem(item.id, item.images?.length ?? 0);
   }
+}
+
+function clearItemState(id: number) {
+  stopCarouselForItem(id);
+  delete editTitre.value[id];
+  delete editDescription.value[id];
+  delete editSaving.value[id];
+  delete selectedFilesPerItem.value[id];
+  delete uploadingPerItem.value[id];
+  delete uploadPercentPerItem.value[id];
+  delete carouselIndexPerItem.value[id];
+  delete carouselIntervalPerItem.value[id];
+  delete itemActionSaving.value[id];
+}
+
+function setSuccessMessage(message: string) {
+  info.value = message;
+  error.value = '';
 }
 
 function onImgErrorAdmin(e: Event) {
@@ -376,19 +395,59 @@ async function submitCredentials() {
 async function publishItem(id: number, isPublished: boolean) {
   if (!token.value) return;
 
-  await api.patch(
-    `/admin/vestes/${id}/publish`,
-    { isPublished },
-    withAuthHeaders(token.value),
-  );
-  await loadData();
+  const currentItem = items.value.find((item) => item.id === id);
+
+  itemActionSaving.value = { ...itemActionSaving.value, [id]: true };
+  info.value = '';
+  error.value = '';
+
+  try {
+    const response = await api.patch<Veste>(
+      `/admin/vestes/${id}/publish`,
+      { isPublished },
+      withAuthHeaders(token.value),
+    );
+
+    const updatedItem = response.data;
+    items.value = items.value.map((item) =>
+      item.id === id ? { ...item, isPublished: updatedItem.isPublished } : item,
+    );
+
+    const itemTitle = currentItem?.titre || updatedItem.titre || 'modèle';
+    setSuccessMessage(
+      updatedItem.isPublished
+        ? `Modele publie avec succes : ${itemTitle}.`
+        : `Modele depublié avec succes : ${itemTitle}.`,
+    );
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || 'Erreur pendant la publication du modele';
+  } finally {
+    itemActionSaving.value = { ...itemActionSaving.value, [id]: false };
+  }
 }
 
 async function deleteItem(id: number) {
   if (!token.value) return;
 
-  await api.delete(`/admin/vestes/${id}`, withAuthHeaders(token.value));
-  await loadData();
+  const currentItem = items.value.find((item) => item.id === id);
+
+  itemActionSaving.value = { ...itemActionSaving.value, [id]: true };
+  info.value = '';
+  error.value = '';
+
+  try {
+    await api.delete(`/admin/vestes/${id}`, withAuthHeaders(token.value));
+
+    items.value = items.value.filter((item) => item.id !== id);
+    clearItemState(id);
+
+    const itemTitle = currentItem?.titre || 'modèle';
+    setSuccessMessage(`Modele supprime avec succes : ${itemTitle}.`);
+  } catch (e: any) {
+    error.value = e?.response?.data?.message || 'Erreur pendant la suppression du modele';
+  } finally {
+    itemActionSaving.value = { ...itemActionSaving.value, [id]: false };
+  }
 }
 
 async function uploadSelectedFilesToVeste(vesteId: number, filesToUpload?: File[]) {
@@ -502,11 +561,14 @@ async function submitItem() {
   error.value = '';
 
   try {
+    const nextTitre = titre.value.trim();
+    const nextDescription = description.value.trim();
+
     const created = await api.post<Veste>(
       '/admin/vestes',
       {
-        titre: titre.value,
-        description: description.value,
+        titre: nextTitre,
+        description: nextDescription,
       },
       withAuthHeaders(token.value),
     );
@@ -517,10 +579,11 @@ async function submitItem() {
     description.value = '';
     selectedFiles.value = [];
     uploadPercent.value = 0;
-    info.value =
+    setSuccessMessage(
       uploadedCount > 0
-        ? `Modele cree avec ${uploadedCount} image(s) importee(s).`
-        : 'Modele cree sans image. Ajoutez des images avant publication.';
+        ? `Modele cree avec succes : ${nextTitre} — ${nextDescription} (${uploadedCount} image(s) importee(s)).`
+        : `Modele cree avec succes : ${nextTitre} — ${nextDescription}. Ajoutez des images avant publication.`,
+    );
     await loadData();
   } catch (e: any) {
     error.value = e?.response?.data?.message || 'Erreur pendant la creation du modele';
@@ -960,19 +1023,21 @@ onUnmounted(() => {
 
           <!-- Actions -->
           <div class="item-actions" style="margin-top: 0.5rem">
-            <button
-              class="btn"
-              @click="publishItem(item.id, !item.isPublished)"
-              style="flex: 1; font-size: 0.9rem"
-            >
-              {{ item.isPublished ? '🔒 Dépublier' : '🌐 Publier' }}
+                <button
+                  class="btn"
+                  @click="publishItem(item.id, !item.isPublished)"
+                  :disabled="itemActionSaving[item.id]"
+                  style="flex: 1; font-size: 0.9rem"
+                >
+                  {{ itemActionSaving[item.id] ? '⏳ Traitement...' : item.isPublished ? '🔒 Dépublier' : '🌐 Publier' }}
             </button>
             <button
               class="danger"
               @click="deleteItem(item.id)"
+                  :disabled="itemActionSaving[item.id]"
               style="flex: 1; font-size: 0.9rem"
             >
-              🗑️ Supprimer
+              {{ itemActionSaving[item.id] ? '⏳ Suppression...' : '🗑️ Supprimer' }}
             </button>
           </div>
         </div>
