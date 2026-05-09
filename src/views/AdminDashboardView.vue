@@ -6,6 +6,7 @@ interface VesteImage {
   id: number;
   vesteId: number;
   mediaUrl: string;
+  mediaPublicId?: string | null;
   mediaType: string;
   fileSize: number;
   createdAt: string;
@@ -156,7 +157,7 @@ async function uploadLogo(fileToUpload: File) {
   const formData = new FormData();
   formData.append('logo', fileToUpload);
 
-  const response = await api.post<{ mediaUrl: string }>(
+  const response = await api.post<{ mediaUrl: string; mediaPublicId?: string }>(
     '/admin/atelier/upload-logo',
     formData,
     withAuthHeaders(token.value),
@@ -421,6 +422,7 @@ async function uploadSelectedFilesToVeste(vesteId: number, filesToUpload?: File[
       `/admin/vestes/${vesteId}/images`,
       {
         mediaUrl: uploadRes.data.mediaUrl,
+        mediaPublicId: uploadRes.data.mediaPublicId,
         mediaType: uploadRes.data.mediaType,
         fileSize: uploadRes.data.fileSize,
       },
