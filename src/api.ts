@@ -71,7 +71,8 @@ export function mediaSrc(mediaUrl?: string | null) {
   if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
     return mediaUrl;
   }
-  return `${baseURL}${mediaUrl}`;
+  const path = mediaUrl.startsWith('/') ? mediaUrl : `/${mediaUrl}`;
+  return `${baseURL}${path}`;
 }
 
 export function isVideoMedia(mediaType?: string | null, mediaUrl?: string | null) {
