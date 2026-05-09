@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
-import { api, mediaSrc } from '../api';
+import { api, isImageMedia, mediaSrc } from '../api';
 
 interface VesteImage {
   id: number;
@@ -161,7 +161,7 @@ onUnmounted(() => {
           style="cursor: pointer"
         >
           <img
-            v-if="item.images[0].mediaType === 'image'"
+            v-if="isImageMedia(item.images[0].mediaType, item.images[0].mediaUrl)"
             :src="mediaSrc(item.images[0].mediaUrl)"
             :alt="item.titre"
             style="width: 100%; height: 260px; object-fit: cover; display: block"
@@ -212,7 +212,7 @@ onUnmounted(() => {
         </button>
 
         <img
-          v-if="lightboxImages[lightboxIndex]?.mediaType === 'image'"
+          v-if="isImageMedia(lightboxImages[lightboxIndex]?.mediaType, lightboxImages[lightboxIndex]?.mediaUrl)"
           :src="mediaSrc(lightboxImages[lightboxIndex]?.mediaUrl)"
           :alt="lightboxVeste.titre"
           class="lightbox-image"

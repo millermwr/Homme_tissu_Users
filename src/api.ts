@@ -21,3 +21,27 @@ export function mediaSrc(mediaUrl?: string | null) {
   }
   return `${baseURL}${mediaUrl}`;
 }
+
+export function isVideoMedia(mediaType?: string | null, mediaUrl?: string | null) {
+  const normalizedType = (mediaType || '').toLowerCase();
+  if (normalizedType.startsWith('video')) {
+    return true;
+  }
+
+  const normalizedUrl = (mediaUrl || '').toLowerCase();
+  return /\.(mp4|webm|mov|m4v|avi|mkv)(\?|#|$)/.test(normalizedUrl);
+}
+
+export function isImageMedia(mediaType?: string | null, mediaUrl?: string | null) {
+  if (isVideoMedia(mediaType, mediaUrl)) {
+    return false;
+  }
+
+  const normalizedType = (mediaType || '').toLowerCase();
+  if (normalizedType.startsWith('image')) {
+    return true;
+  }
+
+  const normalizedUrl = (mediaUrl || '').toLowerCase();
+  return /\.(png|jpe?g|webp|gif|bmp|svg|heic|heif)(\?|#|$)/.test(normalizedUrl);
+}

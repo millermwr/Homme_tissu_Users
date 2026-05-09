@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { api, mediaSrc, withAuthHeaders } from '../api';
+import { api, isImageMedia, mediaSrc, withAuthHeaders } from '../api';
 interface VesteImage {
   id: number;
   vesteId: number;
@@ -159,9 +159,13 @@ async function submitAtelierProfile() {
     atelier.value = response.data;
     atelierName.value = response.data.name;
     atelierWelcomeText.value = response.data.welcomeText;
-    atelierDescription.value = response.data.description;      atelierPhoneNumber.value = response.data.phoneNumber || '';    logoLeftFile.value = null;
+    atelierDescription.value = response.data.description;
+    atelierPhoneNumber.value = response.data.phoneNumber || '';
+    logoLeftFile.value = null;
     logoRightFile.value = null;
     atelierInfo.value = "Identite de l'atelier mise a jour avec succes.";
+
+    await loadData();
   } catch (e: any) {
     atelierError.value =
       e?.response?.data?.message ||
@@ -804,7 +808,7 @@ onMounted(loadData);
           <div style="display: grid; grid-template-columns: 100px 1fr; gap: 1rem; align-items: start">
             <div style="border-radius: 8px; overflow: hidden; background: var(--bg-tertiary); height: 100px">
               <img
-                v-if="item.images && item.images.length > 0 && item.images[0].mediaType === 'image'"
+                v-if="item.images && item.images.length > 0 && isImageMedia(item.images[0].mediaType, item.images[0].mediaUrl)"
                 :src="mediaSrc(item.images[0].mediaUrl)"
                 :alt="item.titre"
                 style="width: 100%; height: 100%; object-fit: cover"
